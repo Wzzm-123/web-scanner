@@ -1,0 +1,17 @@
+/admin
+/login
+/api
+/user
+/test
+/backup
+/config
+/.git
+/robots.txt
+/static
+/upload
+/console
+/debug
+/health
+/docs
+/swagger
+/graphql
