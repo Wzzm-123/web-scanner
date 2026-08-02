@@ -37,3 +37,26 @@ def get_all_results():
     rows = c.fetchall()
     conn.close()
     return rows
+def get_statistics():#安全扫描概览仪表器盘
+    """获取扫描统计摘要"""
+    conn = sqlite3.Connection(DB_FILE)
+    c = conn.cursor()
+    #总记录数
+    c.execute("SELECT COUNT(*) FROM scan_results")
+    total = c.fetchall()[0]
+    #唯一url数
+    c.execute("SELECT COUNT(DISTINCT url) FROM scan_results")
+    unique_urls = c.fetchall()[0]
+    #按状态码统计
+    c.execute("SELECT status_code,COUNT(*) FROM scan_results GROUP BY status_code")
+    status_stats = c.fetchall()
+    conn.close()
+    return total,unique_urls,status_stats
+def search_by_keyword(keyword):
+    """根据关键词搜索url"""
+    conn = sqlite3.Connection(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT *FROM scan_results WHERE url LIKE ? ORDER BY id BESC",(f"%{keyword}%",))
+    rows = c.fetchall()
+    conn.close()
+    return rows
