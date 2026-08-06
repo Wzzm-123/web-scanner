@@ -21,9 +21,9 @@ def scan_directory(base_url,dict_file,threads=10):
             future_to_path[future] = (path,full_url)
         for future in future_to_path:
             path,full_url = future_to_path[future]
-            status,test = future.result()
+            status,text = future.result()
             if status in(200,403,301,302):
-                length = len(test) if test else 0
+                length = len(text) if text else 0
                 print(f"[+] 发现:{full_url},(长度：{length})")
                 save_result(full_url,status,length)
                 found.append(path)
