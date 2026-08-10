@@ -2,6 +2,7 @@ import argparse
 from concurrent.futures import ThreadPoolExecutor
 from day3_utils import send_get_request
 from day5_db_utils import init_db,save_result,get_statistics,search_by_keyword
+from sql_injection import check_sql_injection,guess_columns
 from day5_report import generate_report
 def load_dict(filename):
     """从字典文件中加载路径"""
@@ -36,11 +37,12 @@ def scan_directory(base_url,dict_file,threads=10):
     generate_report()
     return unique_found
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Web目录扫描器 V0.2")
+    parser = argparse.ArgumentParser(description="Web目录扫描器 V3.1")
     parser.add_argument("-u", "--url", required=True, help="目标URL")
     parser.add_argument("-d", "--dict", default="dict.txt", help="字典文件路径")
     parser.add_argument("-t", "--threads", type=int, default=10, help="线程数")
     parser.add_argument("-s", "--search",help="搜索url关键词(查看历史记录)")
+    parser.add_argument("--sql-param",help="开始SQL注入检测,指定要检测的GET参数(如id)")
     args = parser.parse_args()
     if args.search:
         #历史搜索模式
@@ -67,5 +69,19 @@ if __name__ == "__main__":
              for sc ,count in status_stats:
                  print(f"   {sc}:{count}个")
              print()
-             #开始扫描
+             #开始目录扫描
              scan_directory(args.url, args.dict, args.threads)
+             #新增SQL注入检测
+             if args.sql_param:
+                 print(f"\n" + "=" * 40)
+                 print(f"开始SQL注入检测,目标参数:{args.sql_param}")
+                 has_inject,inject_type = check_sql_injection(args.url,args.sql_param)
+                 if has_inject:
+                     print(f"[*] 存在注入漏洞,类型:{inject_type}")
+                     columns = guess_columns(args.url,args.sql_param,inject_type=inject_type)
+                     print(f"查询字段列数：{columns}")
+                 else:
+                     print(f"[-]未查询到SQL注入")
+                 print("=" * 40)
+
+                 
