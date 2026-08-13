@@ -18,6 +18,7 @@ def init_db():
     conn.commit()
     conn.close()
 
+
 def save_result(url, status_code, length):
     """保存一条扫描结果"""
     conn = sqlite3.connect(DB_FILE)
@@ -60,3 +61,35 @@ def search_by_keyword(keyword):
     rows = c.fetchall()
     conn.close()
     return rows
+def init_sql_vul_table():
+    """初始化SQL漏洞表"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS sql_vul (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        url TEXT NOT NULL,
+        param TEXT,
+        inject_type TEXT,
+        column_count INTEGER,
+        db_name TEXT,
+        tables TEXT,
+        found_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    conn.commit()
+    conn.close()
+
+def save_sql_vul(url, param, inject_type, column_count=0, db_name="", tables=None):
+    """保存SQL注入漏洞记录"""
+    if tables is None:
+        tables = []
+    init_sql_vul_table()
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO sql_vul (url, param, inject_type, column_count, db_name, tables) VALUES (?, ?, ?, ?, ?, ?)",
+        (url, param, inject_type, column_count, db_name, ",".join(tables))
+    )
+    conn.commit()
+    conn.close()
