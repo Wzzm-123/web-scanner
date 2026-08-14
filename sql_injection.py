@@ -1,11 +1,41 @@
+"""
+SQL注入检测模块-仅限授权测试使用
+未经授权禁止使用,使用前确认已获得目标系统所有者的书面授权
+"""
 import requests
 import logging
 import re
+#白名单校验
+import ipaddress
+from urllib.parse import urlparse
+ALLOWD_TARGETS = [
+    "localhost",
+    "127.0.0.1",
+    "testphp.vulnwec.com"
+]
+def  is_target_allowd(url):
+    """检查目标是否在确认白名单内"""
+    hostname = urlparse(url).hostname
+    if not hostname:
+        return False
+    if hostname in ALLOWD_TARGETS:
+        return True
+    try:
+        ip = ipaddress.ip_address(hostname)
+        if ip.is_private or ip.is_loopback:
+            return True
+    except ValueError:
+        pass
+    return False
 
 # 修复日志格式：补全百分号占位符
 logging.basicConfig(
     level=logging.INFO,
-    format="[%(levelname)s] %(message)s"
+    format="[%(levelname)s] %(asctime)s - %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("scanner.log", encoding="utf-8")
+    ]
 )
 
 TIMEOUT = 5
@@ -40,6 +70,9 @@ def check_sql_injection(base_url, param_name):
     检测GET参数是否存在SQL注入，返回字典:
     {"has_inject": bool, "inject_type": str}
     """
+    if not is_target_allowd(base_url):
+        logging.error("目标不在白名单授权中，拒绝执行")
+        return{"has_inject":False,"inject_type":""}
     baseline = get_baseline(base_url)
     if not baseline:
         logging.error("目标页面无法访问，检测终止")
@@ -54,8 +87,18 @@ def check_sql_injection(base_url, param_name):
         len_diff = abs(len(resp_char.text) - baseline["length"])
         
         if has_error and len_diff > 20:
-            logging.info(f"检测到字符型SQL注入,参数:{param_name}")
-            return {"has_inject": True, "inject_type": "字符型注入"}
+    # 二次验证
+            resp_confirm = send_request(test_char)
+            if resp_confirm and resp_confirm.text:
+                has_error_confirm = any(key in resp_confirm.text for key in ERROR_KEYWORDS)
+                len_diff_confirm = abs(len(resp_confirm.text) - baseline["length"])
+                if has_error_confirm and len_diff_confirm > 20:
+                    logging.info("二次验证通过，确认字符型SQL注入")
+                    return {"has_inject": True, "inject_type": "字符型注入"}
+                else:
+                    logging.warning("二次验证未通过，忽略疑似误报")
+            else:
+                logging.warning("二次验证请求失败，忽略疑似误报")
 
     # 数字型注入测试（逻辑真假对比）
     true_url = base_url.replace(f"{param_name}=1", f"{param_name}=1 and 1=1")
