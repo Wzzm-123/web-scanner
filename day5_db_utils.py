@@ -44,10 +44,10 @@ def get_statistics():#安全扫描概览仪表器盘
     c = conn.cursor()
     #总记录数
     c.execute("SELECT COUNT(*) FROM scan_results")
-    total = c.fetchall()[0]
+    total = c.fetchone()[0]
     #唯一url数
     c.execute("SELECT COUNT(DISTINCT url) FROM scan_results")
-    unique_urls = c.fetchall()[0]
+    unique_urls = c.fetchone()[0]
     #按状态码统计
     c.execute("SELECT status_code,COUNT(*) FROM scan_results GROUP BY status_code")
     status_stats = c.fetchall()
@@ -93,3 +93,32 @@ def save_sql_vul(url, param, inject_type, column_count=0, db_name="", tables=Non
     )
     conn.commit()
     conn.close()
+def init_xss_table():
+    """初始化XSS漏洞表"""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS xss_vul (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        url TEXT NOT NULL,
+        param TEXT,
+        payload TEXT,
+        evidence TEXT,
+        found_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+    conn.commit()
+    conn.close()
+
+def save_xss_vul(url, param, payload, evidence=""):
+    """保存XSS漏洞记录"""
+    init_xss_table()
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO xss_vul (url, param, payload, evidence) VALUES (?, ?, ?, ?)",
+        (url, param, payload, evidence)
+    )
+    conn.commit()
+    conn.close()
+

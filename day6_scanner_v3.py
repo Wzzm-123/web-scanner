@@ -4,7 +4,8 @@ from day3_utils import send_get_request
 from day5_db_utils import init_db, save_result, get_statistics, search_by_keyword, save_sql_vul
 from day5_report import generate_report
 from sql_injection import check_sql_injection, guess_columns, auto_dump_injection
-
+from xss_detection import check_xss
+from day5_db_utils import save_xss_vul
 def load_dict(filename):
     """从字典文件中加载路径"""
     with open(filename, "r", encoding="utf-8") as f:
@@ -43,12 +44,13 @@ def scan_directory(base_url, dict_file, threads=10):
     return unique_found
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Web目录扫描器 V3.1（集成SQL注入检测）")
-    parser.add_argument("-u", "--url", required=True, help="目标URL（根目录或具体页面）")
+    parser = argparse.ArgumentParser(description="Web目录扫描器 V3.1(集成SQL注入检测)")
+    parser.add_argument("-u", "--url", required=True, help="目标URL(根目录或具体页面)")
     parser.add_argument("-d", "--dict", default="dict.txt", help="字典文件路径")
     parser.add_argument("-t", "--threads", type=int, default=10, help="线程数")
-    parser.add_argument("-s", "--search", help="搜索URL关键词（查看历史记录）")
-    parser.add_argument("--sql-param", help="指定要检测SQL注入的GET参数（如 id）")
+    parser.add_argument("-s", "--search", help="搜索URL关键词(查看历史记录）")
+    parser.add_argument("--sql-param", help="指定要检测SQL注入的GET参数(如 i)")
+    parser.add_argument("--xss-param",help = "指定要检测xss的GET参数(如q)")
     args = parser.parse_args()
 
     # 历史搜索模式
@@ -117,5 +119,19 @@ if __name__ == "__main__":
                     print("[-] 未检测到SQL注入漏洞。")
                 print("=" * 60)
             else:
-                print("[-] URL 包含参数，但未指定 --sql-param，无法进行SQL注入检测。")
+                print("[-] URL 包含参数，但未指定 --sql-param,无法进行SQL注入检测。")
                 print("    示例: python day6_scanner_v3.py -u \"http://127.0.0.1:8080/Less-1/?id=1\" --sql-param id")
+        #==============xss检测逻辑===============
+        if args.xss_param:
+            print("\n" + "=" * 60)
+            print(f"[*]开始xss检测:{args.url} 参数:{args.xss_param}")
+            print("=" *60)
+            xss_result = check_xss(args.url,args.xss_param)
+            if xss_result["has_xss"]:
+                print(f"[+] 检测到反射型xss! payload:{xss_result['payload']}")
+                save_xss_vul(args.url,args.xss_param,xss_result['payload'],xss_result['evidence'])
+            else:
+                print("[-] 未检测到反射型xss")
+            print("=" * 60)
+
+
