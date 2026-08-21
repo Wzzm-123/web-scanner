@@ -1,0 +1,7 @@
+/user
+/admin
+/login
+/api
+/console
+/.git
+/robots.txt

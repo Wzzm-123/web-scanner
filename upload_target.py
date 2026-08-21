@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template_string, redirect, url_for
+from flask import Flask, request, render_template_string
 import os
 
 app = Flask(__name__)
@@ -6,23 +6,46 @@ app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# 主页面：上传表单
 @app.route('/', methods=['GET', 'POST'])
 def upload():
     if request.method == 'POST':
         file = request.files.get('file')
-        if file:
-            filename = file.filename
-            # 第一层防御：前端JS会检查文件名，这里后端不检查，故意留漏洞
-            # 第二层防御：检查MIME（Content-Type），但可以绕过
-            if file.content_type not in ['image/jpeg', 'image/png', 'image/gif']:
-                return "文件类型不允许！只允许图片格式。"
-            
-            file.save(os.path.join(UPLOAD_FOLDER, filename))
-            return f"上传成功！文件路径：/uploads/{filename}"
-    # 前端JS校验：只允许 .jpg/.png/.gif（可被绕过）
+        if not file:
+            return "没有文件"
+        
+        filename = file.filename
+        
+        # 第一层防御：前端JS校验（表单里已包含，但可被绕过）
+        # 第二层防御：MIME检查（Content-Type）
+        if file.content_type not in ['image/jpeg', 'image/png', 'image/gif']:
+            return "文件类型不允许！只允许图片格式。"
+        
+        # 第三层防御：扩展名黑名单
+        ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+        blacklist = ['php', 'php3', 'php4', 'php5', 'phtml', 'pht']
+        if ext in blacklist:
+            return "文件扩展名不允许！"
+        
+        # 第四层防御：文件头校验（只允许GIF、JPEG、PNG）
+        content = file.read()
+        file.seek(0)
+        # 简单判断文件头
+        if content.startswith(b'GIF89a'):
+            pass  # GIF文件头正常
+        elif content.startswith(b'\xff\xd8\xff'):
+            pass  # JPEG文件头正常
+        elif content.startswith(b'\x89PNG\r\n\x1a\n'):
+            pass  # PNG文件头正常
+        else:
+            return "文件内容不是合法图片！"
+        
+        # 保存文件
+        file.save(os.path.join(UPLOAD_FOLDER, filename))
+        return f"上传成功！文件路径：/uploads/{filename}"
+    
+    # 前端表单
     form = '''
-    <h2>文件上传靶场（学习用）</h2>
+    <h2>文件上传靶场（多层防御）</h2>
     <form method="POST" enctype="multipart/form-data">
         <input type="file" name="file" accept=".jpg,.png,.gif" onchange="checkFile(this)">
         <input type="submit" value="上传">
@@ -40,7 +63,6 @@ def upload():
     '''
     return render_template_string(form)
 
-# 提供上传文件的访问
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
     return f"文件已上传，但本靶场不解析PHP，请自行验证。"
