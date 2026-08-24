@@ -8,10 +8,33 @@ from db.database import (
 from report.generator import generate_report
 from modules.sql_injection import check_sql_injection, guess_columns, auto_dump_injection
 from modules.xss_detection import check_xss
+from urllib.parse import urlparse
+import sys
+def validate_url(url):
+    """校验URL合法性,防止SSRF等风险"""
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme not in ('http', 'https'):
+            return False, "只允许 http/https 协议"
+        if not parsed.hostname:
+            return False, "URL缺少主机名"
+        return True, ""
+    except Exception as e:
+        return False, f"URL解析失败: {e}"
+
+def validate_dict_path(dict_file):
+    """校验字典文件路径，防止路径遍历"""
+    # 禁止绝对路径和 ../
+    if dict_file.startswith('/') or dict_file.startswith('\\') or '..' in dict_file:
+        return False, "字典路径不允许绝对路径或包含 .."
+    return True, ""
 
 
 def load_dict(filename):
     """从字典文件中加载路径"""
+    if filename.startswith('/') or filename.startswith('\\') or '..' in filename:
+        print("[-] 字典路径不合法")
+        return []
     with open(filename, "r", encoding="utf-8") as f:
         return [line.strip() for line in f if line.strip() and not line.startswith("#")]
 
@@ -58,6 +81,19 @@ if __name__ == "__main__":
     parser.add_argument("--cookie", help="Cookie字符串，例如 'PHPSESSID=abc123; username=admin'")
     parser.add_argument("--proxy", help="HTTP代理地址，例如 'http://127.0.0.1:8080'")
     args = parser.parse_args()
+    # ===== 输入安全校验 =====
+    # 1. 校验 URL
+    valid, msg = validate_url(args.url)
+    if not valid:
+        print(f"[-] URL校验失败: {msg}")
+        sys.exit(1)
+
+    # 2. 校验字典路径（仅在目录扫描模式需要）
+    if "?" not in args.url:  # 目录扫描需要字典
+        valid_dict, dict_msg = validate_dict_path(args.dict)
+        if not valid_dict:
+            print(f"[-] 字典路径校验失败: {dict_msg}")
+            sys.exit(1)
 
     # 创建 Requester 实例
     requester = Requester(cookies=args.cookie, proxy=args.proxy)

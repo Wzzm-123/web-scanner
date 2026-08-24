@@ -1,4 +1,6 @@
 import sqlite3
+import json
+import logging
 
 DB_FILE = "scan_results.db"
 
@@ -121,4 +123,23 @@ def save_xss_vul(url, param, payload, evidence=""):
     )
     conn.commit()
     conn.close()
+import json
+
+def export_results_to_json(filename):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT url, status_code, length, discovered_time FROM scan_results ORDER BY id DESC")
+    rows = c.fetchall()
+    conn.close()
+    results = []
+    for row in rows:
+        results.append({
+            "url": row[0],
+            "status_code": row[1],
+            "length": row[2],
+            "discovered_time": row[3]
+        })
+    with open(filename, 'w', encoding='utf-8') as f:
+        json.dump(results, f, indent=2, ensure_ascii=False)
+    logging.info(f"结果已导出到 {filename}")
 

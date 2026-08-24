@@ -49,8 +49,19 @@ class Requester:
             logging.warning(f"请求超时: {url}")
         except requests.exceptions.ConnectionError:
             logging.warning(f"连接失败: {url}")
+        except requests.exceptions.SSLError:
+            logging.warning(f" SSL错误:{url}")
+        except requests.exceptions.TooManyRedirects:
+            logging.warning(f" 重定向过多:{url}")
+        except requests.exceptions.InvalidURL:
+            logging.warning(f" URL格式错误:{url}")
+        except requests.exceptions.ProxyError:
+            logging.warning(f" 代理错误:{url}")
+        except requests.exceptions.ReadTimeout:
+            logging.warning(f" 读取超时:{url}")
         except Exception as e:
             logging.debug(f"请求错误: {e}")
+
         return None, None
     
     def post(self, url, data=None, **kwargs):
@@ -62,6 +73,16 @@ class Requester:
             logging.warning(f"请求超时: {url}")
         except requests.exceptions.ConnectionError:
             logging.warning(f"连接失败: {url}")
+        except requests.exceptions.SSLError:
+            logging.warning(f" SSL错误:{url}")
+        except requests.exceptions.TooManyRedirects:
+            logging.warning(f" 重定向过多:{url}")
+        except requests.exceptions.InvalidURL:
+            logging.warning(f" URL格式错误:{url}")
+        except requests.exceptions.ProxyError:
+            logging.warning(f" 代理错误:{url}")
+        except requests.exceptions.ReadTimeout:
+            logging.warning(f" 读取超时:{url}")
         except Exception as e:
             logging.debug(f"请求错误: {e}")
         return None, None
