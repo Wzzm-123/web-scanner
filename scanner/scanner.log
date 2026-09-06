@@ -6,3 +6,12 @@
 [WARNING] 2026-08-19 16:59:59,312 - 连接失败: http://127.0.0.1:8080/.git
 [WARNING] 2026-08-19 16:59:59,313 - 连接失败: http://127.0.0.1:8080/user
 [ERROR] 2026-08-19 17:00:18,449 - 目标页面无法访问，检测终止
+[WARNING] 2026-08-29 12:35:45,429 - 连接失败: https://www.iwun.edu.cn/login
+[WARNING] 2026-08-29 12:35:45,429 - 连接失败: https://www.iwun.edu.cn/admin
+[WARNING] 2026-08-29 12:35:45,429 - 连接失败: https://www.iwun.edu.cn/user
+[WARNING] 2026-08-29 12:35:45,429 - 连接失败: https://www.iwun.edu.cn/api
+[WARNING] 2026-08-29 12:35:45,430 - 连接失败: https://www.iwun.edu.cn/.git
+[WARNING] 2026-08-29 12:35:45,430 - 连接失败: https://www.iwun.edu.cn/robots.txt
+[WARNING] 2026-08-29 12:35:45,430 - 连接失败: https://www.iwun.edu.cn/console
+[ERROR] 2026-08-31 19:51:00,270 - 目标页面无法访问，检测终止
+[ERROR] 2026-08-31 19:54:38,464 - 目标页面无法访问，检测终止

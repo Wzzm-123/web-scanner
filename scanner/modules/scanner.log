@@ -1,0 +1,93 @@
+[INFO] 2026-09-02 21:19:24,507 - 开始自动脱库：http://localhost/sqli-labs/Less-32/?id=1 
+[ERROR] 2026-09-02 21:19:24,637 - 不存在SQL注入,无法脱库
+[INFO] 2026-09-02 21:19:39,026 - 开始自动脱库：http://localhost/sqli-labs/Less-32/?id=1 
+[ERROR] 2026-09-02 21:19:39,097 - 不存在SQL注入,无法脱库
+[INFO] 2026-09-02 21:24:32,219 - 开始自动脱库：http://localhost/sqli-labs/Less-32/?id=1 
+[INFO] 2026-09-02 21:24:32,302 - 二次验证通过,确认宽字节SQL注入
+[INFO] 2026-09-02 21:24:32,412 - 列数猜解完成：3 列
+[INFO] 2026-09-02 21:24:32,417 - 定位到回显位：[1, 2, 3]
+[INFO] 2026-09-02 21:24:32,417 - 过滤后可用回显位：[2, 3]
+[INFO] 2026-09-02 21:24:32,445 - 当前数据库名：security
+[INFO] 2026-09-02 21:24:32,476 - 库security下的表：['emails', 'referers', 'uagents', 'users']
+[INFO] 2026-09-02 21:24:32,506 - 表 users 的列：['id', 'username', 'password']
+[INFO] 2026-09-02 21:24:32,536 - 脱取数据：[{'username': 'Dumb', 'password': 'Dumb'}, {'username': 'Angelina', 'password': 'I-kill-you'}, {'username': 'Dummy', 'password': 'p@ssword'}, {'username': 'secure', 'password': 'crappy'}, {'username': 'stupid', 'password': 'stupidity'}, {'username': 'superman', 'password': 'genious'}, {'username': 'batman', 'password': 'mob!le'}, {'username': 'admin', 'password': ''}, {'username': 'admin1', 'password': 'admin1'}, {'username': 'admin2', 'password': 'admin2'}, {'username': 'admin3', 'password': 'admin3'}, {'username': 'dhakkan', 'password': 'dumbo'}, {'username': 'admin4', 'password': 'admin4'}, {'username': "admin' -- -", 'password': '11111'}]
+[INFO] 2026-09-06 14:04:06,114 - 开始自动脱库：http://localhost/sqli-labs/Less-32/?id=1 
+[ERROR] 2026-09-06 14:04:10,195 - 目标页面无法访问，检测终止
+[ERROR] 2026-09-06 14:04:10,196 - 不存在SQL注入,无法脱库
+[INFO] 2026-09-06 19:40:27,225 - 开始自动脱库：http://localhost/sqli-labs/Less-8/?id=1 
+[ERROR] 2026-09-06 19:40:27,333 - 不存在SQL注入,无法脱库
+[INFO] 2026-09-06 19:41:41,276 - 开始自动脱库：http://localhost/sqli-labs/Less-8/?id=1 
+[ERROR] 2026-09-06 19:41:41,401 - 不存在SQL注入,无法脱库
+[INFO] 2026-09-06 19:42:13,126 - 开始自动脱库：http://localhost/sqli-labs/Less-8/?id=1 
+[ERROR] 2026-09-06 19:42:13,230 - 不存在SQL注入,无法脱库
+[INFO] 2026-09-06 19:42:56,528 - 开始自动脱库：http://localhost/sqli-labs/Less-8/?id=1 
+[ERROR] 2026-09-06 19:42:56,607 - 不存在SQL注入,无法脱库
+[INFO] 2026-09-06 19:45:57,658 - 开始自动脱库：http://localhost/sqli-labs/Less-8/?id=1 
+[ERROR] 2026-09-06 19:45:57,753 - 不存在SQL注入,无法脱库
+[INFO] 2026-09-06 19:47:01,345 - 开始自动脱库：http://localhost/sqli-labs/Less-8/?id=1 
+[ERROR] 2026-09-06 19:47:01,431 - 不存在SQL注入,无法脱库
+[INFO] 2026-09-06 19:47:39,587 - 开始自动脱库：http://localhost/sqli-labs/Less-8/?id=1 
+[ERROR] 2026-09-06 19:47:39,639 - 不存在SQL注入,无法脱库
+[INFO] 2026-09-06 19:50:09,932 - 开始自动脱库：http://localhost/sqli-labs/Less-8/?id=1 
+[ERROR] 2026-09-06 19:50:09,948 - 不存在SQL注入,无法脱库
+[INFO] 2026-09-06 19:51:02,701 - 开始自动脱库：http://localhost/sqli-labs/Less-8/?id=1 
+[ERROR] 2026-09-06 19:51:02,779 - 不存在SQL注入,无法脱库
+[INFO] 2026-09-06 19:53:54,469 - 开始自动脱库：http://localhost/sqli-labs/Less-8/?id=1 
+[ERROR] 2026-09-06 19:53:54,537 - 不存在SQL注入,无法脱库
+[INFO] 2026-09-06 19:54:41,467 - 开始自动脱库：http://localhost/sqli-labs/Less-8/?id=1 
+[ERROR] 2026-09-06 19:54:41,537 - 不存在SQL注入,无法脱库
+[INFO] 2026-09-06 19:56:18,366 - 开始自动脱库：http://localhost/sqli-labs/Less-8/?id=1 
+[ERROR] 2026-09-06 19:56:18,401 - 不存在SQL注入,无法脱库
+[INFO] 2026-09-06 19:59:03,289 - 开始自动脱库：http://localhost/sqli-labs/Less-8/?id=1 
+[ERROR] 2026-09-06 19:59:03,324 - 不存在SQL注入,无法脱库
+[INFO] 2026-09-06 20:02:30,225 - 开始自动脱库：http://localhost/sqli-labs/Less-8/?id=1 
+[INFO] 2026-09-06 20:02:30,315 - 二次验证通过，确认布尔盲注
+[WARNING] 2026-09-06 20:02:30,370 - 列数超过上限 10，请扩大范围
+[INFO] 2026-09-06 20:02:30,374 - 定位到回显位：[1, 2, 3, 5, 6, 8, 9]
+[INFO] 2026-09-06 20:02:30,374 - 过滤后可用回显位：[2, 3, 5, 6, 8, 9]
+[INFO] 2026-09-06 20:02:30,377 - 当前数据库名：
+[ERROR] 2026-09-06 20:02:30,377 - 获取库名失败
+[INFO] 2026-09-06 20:15:23,540 - 二次验证通过,确认字符型SQL注入
+[INFO] 2026-09-06 20:17:20,932 - 二次验证通过,确认字符型SQL注入
+[INFO] 2026-09-06 20:22:31,026 - 二次验证通过，确认字符型SQL注入
+[INFO] 2026-09-06 20:22:37,122 - 二次验证通过，确认时间盲注可用
+[INFO] 2026-09-06 20:22:37,122 - ===== 开始盲注脱库 =====
+[INFO] 2026-09-06 20:23:34,030 - 二次验证通过，确认字符型SQL注入
+[INFO] 2026-09-06 20:23:40,093 - 二次验证通过，确认时间盲注可用
+[INFO] 2026-09-06 20:23:40,094 - ===== 开始盲注脱库 =====
+[INFO] 2026-09-06 20:23:42,173 - 二次验证通过，确认字符型SQL注入
+[INFO] 2026-09-06 20:23:48,266 - 二次验证通过，确认时间盲注可用
+[INFO] 2026-09-06 20:23:48,267 - ===== 开始盲注脱库 =====
+[INFO] 2026-09-06 20:28:30,685 - 二次验证通过，确认字符型SQL注入
+[INFO] 2026-09-06 20:28:30,731 - 列数猜解完成：3 列
+[INFO] 2026-09-06 20:28:30,744 - 定位到回显位：[2, 3]
+[INFO] 2026-09-06 20:28:30,744 - ===== 开始联合注入脱库 =====
+[INFO] 2026-09-06 20:28:30,783 - 列数猜解完成：3 列
+[INFO] 2026-09-06 20:28:30,786 - 定位到回显位：[2, 3]
+[INFO] 2026-09-06 20:28:30,790 - 当前数据库名：security
+[INFO] 2026-09-06 20:28:30,793 - 库security下的表：['emails', 'referers', 'uagents', 'users']
+[INFO] 2026-09-06 20:28:30,798 - 表 users 的列：['id', 'username', 'password']
+[INFO] 2026-09-06 20:28:30,801 - 脱取数据：[{'username': 'Dumb', 'password': 'Dumb'}, {'username': 'Angelina', 'password': 'I-kill-you'}, {'username': 'Dummy', 'password': 'p@ssword'}, {'username': 'secure', 'password': 'crappy'}, {'username': 'stupid', 'password': 'stupidity'}, {'username': 'superman', 'password': 'genious'}, {'username': 'batman', 'password': 'mob!le'}, {'username': 'admin', 'password': ''}, {'username': 'admin1', 'password': 'admin1'}, {'username': 'admin2', 'password': 'admin2'}, {'username': 'admin3', 'password': 'admin3'}, {'username': 'dhakkan', 'password': 'dumbo'}, {'username': 'admin4', 'password': 'admin4'}, {'username': "admin' -- -", 'password': '11111'}]
+[INFO] 2026-09-06 20:30:24,199 - 二次验证通过，确认字符型SQL注入
+[INFO] 2026-09-06 20:30:24,240 - 列数猜解完成：0 列
+[INFO] 2026-09-06 20:30:29,187 - 二次验证通过，确认字符型SQL注入
+[INFO] 2026-09-06 20:30:29,193 - 列数猜解完成：0 列
+[INFO] 2026-09-06 20:38:49,561 - 二次验证通过，确认布尔盲注可用
+[INFO] 2026-09-06 20:38:49,561 - 通过布尔状态确认存在字符型注入
+[WARNING] 2026-09-06 20:38:49,685 - 列数超过上限 20，请扩大范围
+[INFO] 2026-09-06 20:38:49,688 - 定位到回显位：[2, 3, 5, 6, 8, 9, 19]
+[INFO] 2026-09-06 20:38:49,688 - ===== 开始联合注入脱库 =====
+[WARNING] 2026-09-06 20:38:49,933 - 列数超过上限 20，请扩大范围
+[INFO] 2026-09-06 20:38:49,936 - 定位到回显位：[2, 3, 5, 6, 8, 9, 19]
+[INFO] 2026-09-06 20:38:49,940 - 当前数据库名：
+[ERROR] 2026-09-06 20:38:49,940 - 获取库名失败
+[INFO] 2026-09-06 20:42:52,915 - 二次验证通过，确认布尔盲注可用
+[INFO] 2026-09-06 20:42:52,916 - 通过布尔状态确认存在字符型注入
+[WARNING] 2026-09-06 20:42:53,024 - 列数探测失败，超过上限 20，判定为无报错注入场景
+[INFO] 2026-09-06 20:42:53,034 - 二次验证通过，确认布尔盲注可用
+[INFO] 2026-09-06 20:42:53,034 - ===== 开始盲注脱库 =====
+[INFO] 2026-09-06 20:43:25,949 - 二次验证通过，确认时间盲注可用
+[INFO] 2026-09-06 20:43:25,949 - 通过时间延时确认存在字符型注入
+[WARNING] 2026-09-06 20:43:26,052 - 列数探测失败，超过上限 20，判定为无报错注入场景
+[INFO] 2026-09-06 20:43:32,117 - 二次验证通过，确认时间盲注可用
+[INFO] 2026-09-06 20:43:32,118 - ===== 开始盲注脱库 =====
